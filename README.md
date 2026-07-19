@@ -3,6 +3,8 @@
 Autocorrect as you type — something Electron apps famously can't do — powered by the
 **real macOS autocorrect engine** (`NSSpellChecker`, the same API native Mac apps use).
 
+![macOS settings honored in Obsidian](store-screenshot.png)
+
 ## How it works
 
 When you finish a word (space, punctuation, or Enter), the plugin asks macOS what it
