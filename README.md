@@ -21,11 +21,12 @@ you've taught your Mac via "Learn Spelling".
 
 ## Install
 
-Unzip into `YourVault/.obsidian/plugins/mac-autocorrect/` (folder must contain
+Install from Community plugins in Obsidian, or manually: unzip into
+`YourVault/.obsidian/plugins/mac-autocorrect/` (folder must contain
 `main.js`, `manifest.json`, `styles.css`), then enable it in
 Settings → Community plugins (hit the refresh icon first).
 
-## v1.1 — full macOS typing behavior
+## Full macOS typing behavior
 
 Mirroring the macOS keyboard settings panel, each with its own toggle:
 
@@ -38,7 +39,7 @@ Mirroring the macOS keyboard settings panel, each with its own toggle:
 - **Add period with double-space** — two spaces after a word become ". ",
   and the next word then gets capitalized naturally.
 
-## v1.2 — macOS Text Replacements
+## macOS Text Replacements
 
 The plugin reads your actual replacement list from macOS
 (`~/Library/KeyboardServices/TextReplacements.db`, the iCloud-synced store
@@ -87,3 +88,6 @@ forks, fixes, and adoptions are welcome and encouraged.
   own in settings ("Additional abbreviations").
 - If the Text Replacements database can't be read (very old macOS, or none
   defined yet), the feature quietly does nothing — everything else still works.
+- System-wide double-space timing, sentence detection, and capitalization are
+  reimplemented to match macOS behavior as closely as markdown allows; version
+  history lives in CHANGELOG.md.
