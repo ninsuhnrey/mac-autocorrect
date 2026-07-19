@@ -1,0 +1,10 @@
+{
+  "id": "mac-autocorrect",
+  "name": "macOS Autocorrect",
+  "version": "1.2.0",
+  "minAppVersion": "1.0.0",
+  "description": "Autocorrect as you type, powered by the native macOS spellchecker (NSSpellChecker), with the Electron spellchecker as a fallback.",
+  "author": "ninsuhnrey",
+  "authorUrl": "https://github.com/ninsuhnrey",
+  "isDesktopOnly": true
+}

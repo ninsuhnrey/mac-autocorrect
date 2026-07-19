@@ -1,0 +1,16 @@
+/* macOS Autocorrect plugin */
+
+/* brief flash on a freshly corrected word */
+.mac-autocorrect-flash {
+  border-radius: 2px;
+  animation: mac-autocorrect-fade 1.1s ease-out both;
+}
+
+@keyframes mac-autocorrect-fade {
+  from {
+    background-color: rgba(242, 234, 207, 0.45);
+  }
+  to {
+    background-color: transparent;
+  }
+}
