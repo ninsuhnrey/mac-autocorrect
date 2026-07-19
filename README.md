@@ -3,7 +3,7 @@
 Autocorrect as you type — something Electron apps famously can't do — powered by the
 **real macOS autocorrect engine** (`NSSpellChecker`, the same API native Mac apps use).
 
-![macOS settings honored in Obsidian](store-screenshot.png)
+![macOS settings honored in Obsidian](macos-autocorrect-listing-screenshot.png)
 
 ## How it works
 
