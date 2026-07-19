@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- Documentation refresh (no functional changes).
+
 ## 1.2.0
 
 - Apply macOS Text Replacements (System Settings → Keyboard) on word boundaries:
