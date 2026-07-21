@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.2
+
+- Support several active languages at once (e.g. `en_US, de_DE, el_GR`),
+  matching macOS's multi-language spellchecking. Each word is routed to the
+  configured language matching its script, so notes mixing scripts are
+  corrected in each. The previous single "Language override" setting is
+  migrated automatically.
+
 ## 1.2.1
 
 - Documentation refresh (no functional changes).

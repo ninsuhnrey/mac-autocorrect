@@ -299,7 +299,7 @@ const DEFAULT_SETTINGS = {
   doubleSpacePeriod: true, // add period with double-space
   useTextReplacements: true, // apply macOS Text Replacements
   engine: 'auto', // 'auto' | 'native' | 'electron'
-  language: '', // '' = system language
+  languages: '', // '' = system language; otherwise one or more, e.g. "en_US, de_DE"
   flash: true,
   ignoreWords: '',
   extraAbbreviations: '',
@@ -310,9 +310,56 @@ const BOUNDARY = /^[\s.,;:!?)\]}"'»›…—–]/;
 // characters before a word that mean "leave this alone" (tags, paths, wiki syntax, etc.)
 const BAD_PREFIX = /[#@/\\.`_~$%&+=<>{[-]/;
 
+/* ------------------------- multi-language routing ------------------------- *
+ * macOS can spell-check in several active languages at once. Obsidian's own
+ * spellchecker only lets you pick one, so when more than one language is
+ * configured this plugin routes each word to the language that matches the
+ * script it's written in (Latin, Cyrillic, Greek, …). This lets a single vault
+ * work with a mix of languages the way native Mac apps do.
+ * ------------------------------------------------------------------------- */
+
+// The dominant Unicode script of a word (first strongly-scripted letter wins).
+function scriptOf(word) {
+  if (/\p{Script=Cyrillic}/u.test(word)) return 'Cyrillic';
+  if (/\p{Script=Greek}/u.test(word)) return 'Greek';
+  if (/\p{Script=Hebrew}/u.test(word)) return 'Hebrew';
+  if (/\p{Script=Arabic}/u.test(word)) return 'Arabic';
+  if (/\p{Script=Han}/u.test(word)) return 'Han';
+  if (/\p{Script=Hangul}/u.test(word)) return 'Hangul';
+  if (/\p{Script=Hiragana}/u.test(word) || /\p{Script=Katakana}/u.test(word)) return 'Kana';
+  return 'Latin';
+}
+
+// The script a language code (e.g. "de_DE", "el") is written in.
+function scriptForLang(code) {
+  const c = String(code || '').toLowerCase().slice(0, 2);
+  if (['ru', 'uk', 'be', 'bg', 'sr', 'mk', 'kk', 'ky', 'tg', 'mn'].includes(c)) return 'Cyrillic';
+  if (c === 'el') return 'Greek';
+  if (['he', 'yi'].includes(c)) return 'Hebrew';
+  if (['ar', 'fa', 'ur', 'ps'].includes(c)) return 'Arabic';
+  if (['zh'].includes(c)) return 'Han';
+  if (c === 'ko') return 'Hangul';
+  if (c === 'ja') return 'Kana';
+  return 'Latin';
+}
+
+// Parse a "en_US, de_DE" style setting into a clean list.
+function parseLanguages(raw) {
+  return String(raw || '')
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length);
+}
+
 module.exports = class MacAutocorrectPlugin extends Plugin {
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    // migrate the old single-language setting
+    if (!this.settings.languages && this.settings.language) {
+      this.settings.languages = this.settings.language;
+    }
+    delete this.settings.language;
+    this.langs = parseLanguages(this.settings.languages);
     setExtraAbbreviations(this.settings.extraAbbreviations);
     this.native = new NativeChecker();
     this.repl = new Replacements();
@@ -577,13 +624,25 @@ module.exports = class MacAutocorrectPlugin extends Plugin {
 
   /* -------------------- correction engines -------------------- */
 
+  // Choose which of the configured languages to check `word` against, based on
+  // the script it's written in. Empty list → use the system language.
+  pickLanguage(word) {
+    if (!this.langs || !this.langs.length) return '';
+    if (this.langs.length === 1) return this.langs[0];
+    const ws = scriptOf(word);
+    for (const l of this.langs) {
+      if (scriptForLang(l) === ws) return l;
+    }
+    return this.langs[0]; // no script match → fall back to the first language
+  }
+
   async getCorrection(word) {
     const engine = this.settings.engine;
     const wantNative =
       engine === 'native' || (engine === 'auto' && process.platform === 'darwin');
 
     if (wantNative && !this.native.failed) {
-      const corr = await this.native.correction(word, this.settings.language);
+      const corr = await this.native.correction(word, this.pickLanguage(word));
       if (corr !== undefined) return corr; // engine worked (may be null = no correction)
       // undefined → helper unavailable, fall through to Electron
     }
@@ -595,6 +654,15 @@ module.exports = class MacAutocorrectPlugin extends Plugin {
   electronCorrection(word) {
     try {
       const { webFrame } = require('electron');
+      // Point Electron's spellchecker at the configured languages so a mixed-
+      // language vault is checked correctly (no-op on macOS, which uses the OS).
+      if (this.langs && this.langs.length && webFrame.setSpellCheckerLanguages) {
+        const key = this.langs.join(',');
+        if (this._electronLangKey !== key) {
+          try { webFrame.setSpellCheckerLanguages(this.langs); } catch (e) {}
+          this._electronLangKey = key;
+        }
+      }
       if (!webFrame.isWordMisspelled(word)) return null;
       const suggestions = webFrame.getWordSuggestions(word);
       return suggestions && suggestions.length ? suggestions[0] : null;
@@ -762,13 +830,21 @@ class AutocorrectSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName('Language override')
-      .setDesc('Leave blank to use your system language. Otherwise e.g. en_US, en_GB, de_DE.')
+      .setName('Languages')
+      .setDesc(
+        'Leave blank to use your system language. Enter one or more (comma- or space-separated), e.g. "en_US, de_DE, el_GR" — each word is checked in the configured language matching its script, just like macOS with several active languages.'
+      )
       .addText((t) =>
-        t.setValue(this.plugin.settings.language).onChange(async (v) => {
-          this.plugin.settings.language = v.trim();
-          await this.plugin.saveSettings();
-        })
+        t
+          .setPlaceholder('en_US, de_DE')
+          .setValue(this.plugin.settings.languages)
+          .onChange(async (v) => {
+            this.plugin.settings.languages = v.trim();
+            this.plugin.langs = parseLanguages(v);
+            this.plugin.native.failed = false; // let the engine retry with new languages
+            this.plugin._electronLangKey = null;
+            await this.plugin.saveSettings();
+          })
       );
 
     new Setting(containerEl)

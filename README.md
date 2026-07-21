@@ -55,6 +55,18 @@ when you type a space, punctuation, or Enter after them.
   every 30s), or immediately via the "Reload macOS Text Replacements" command.
 - Shortcuts containing spaces are not supported.
 
+## Multiple languages
+
+Obsidian's own spellchecker only lets you pick a single language, but macOS can
+spell-check in several active languages at once. Set **Languages** in the plugin
+settings to a comma- or space-separated list of locale codes (e.g.
+`en_US, de_DE, el_GR`). Leave it blank to use your system language.
+
+Each word is routed to the configured language that matches the script it's
+written in, so a note mixing languages in different scripts — Latin, Cyrillic,
+Greek, Hebrew, Arabic, CJK — is corrected in each. When several configured
+languages share the same script, the first one listed is used for that script.
+
 ## Security & privacy disclosures
 
 Per Obsidian's developer policies, this plugin accesses things outside your vault —
