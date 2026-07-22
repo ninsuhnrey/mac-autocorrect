@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.2
+
+- Fix: typing a contraction or possessive apostrophe ("didn't", "James'") no
+  longer corrects the pre-apostrophe stub and duplicate the suffix (e.g.
+  "didn't" becoming "didn't't"). The apostrophe is no longer treated as a
+  word-ending boundary. (#1)
+- Fix: added a guard so a correction never applies if you've kept typing the
+  word while the spellchecker was still thinking (race condition).
+
 ## 1.2.1
 
 - Documentation refresh (no functional changes).

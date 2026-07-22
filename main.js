@@ -305,8 +305,14 @@ const DEFAULT_SETTINGS = {
   extraAbbreviations: '',
 };
 
-// characters that end a word and trigger a check
-const BOUNDARY = /^[\s.,;:!?)\]}"'»›…—–]/;
+// characters that end a word and trigger a check.
+// NOTE: the apostrophe is deliberately NOT here — it appears mid-word in
+// contractions ("didn't") and possessives, so typing it must not make us treat
+// the preceding stub ("didn") as a finished word and autocorrect it. (See #1.)
+const BOUNDARY = /^[\s.,;:!?)\]}"»›…—–]/;
+// a character that continues a word to its right: if one of these sits at the
+// correction target's right edge, the user is still typing that word — leave it.
+const WORD_CONT = /[\p{L}\p{N}'’]/u;
 // characters before a word that mean "leave this alone" (tags, paths, wiki syntax, etc.)
 const BAD_PREFIX = /[#@/\\.`_~$%&+=<>{[-]/;
 
@@ -534,6 +540,7 @@ module.exports = class MacAutocorrectPlugin extends Plugin {
     Promise.resolve().then(() => {
       try {
         if (view.state.sliceDoc(from, to) !== original) return;
+        if (WORD_CONT.test(view.state.sliceDoc(to, to + 1))) return; // still typing it
         const spec = {
           changes: { from, to, insert },
           userEvent: 'input.autocorrect',
@@ -619,6 +626,10 @@ module.exports = class MacAutocorrectPlugin extends Plugin {
       return;
     }
     if (state.sliceDoc(from, to) !== word) return; // document changed while we asked
+    // While we were asking the spellchecker, did the user keep typing this word?
+    // If the char just past our target now continues the word (a letter, digit,
+    // or apostrophe), replacing the stub would corrupt it — bail out. (See #1.)
+    if (WORD_CONT.test(state.sliceDoc(to, to + 1))) return;
 
     const spec = {
       changes: { from, to, insert: corr },
