@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.0
+
+- **"Use macOS Text Replacements" now defaults off**, and is turned off once for
+  existing installs. macOS already applies your Text Replacements natively inside
+  Obsidian, so the plugin doing it too double-expanded them (e.g. "dont" →
+  "don'tt"). If you deliberately want the plugin to own replacements — its version
+  skips code, math, and links — disable Obsidian's native handling (Settings →
+  Editor) and turn this back on; it won't be flipped off again.
+- **Smart quotes**: corrected contractions now use a curly apostrophe (don’t),
+  matching native macOS autocorrect. Toggle in settings.
+
 ## 1.2.2
 
 - Fix: typing a contraction or possessive apostrophe ("didn't", "James'") no

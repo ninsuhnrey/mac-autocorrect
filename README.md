@@ -3,8 +3,6 @@
 Autocorrect as you type — something Electron apps famously can't do — powered by the
 **real macOS autocorrect engine** (`NSSpellChecker`, the same API native Mac apps use).
 
-![macOS settings honored in Obsidian](macos-autocorrect-listing-screenshot.png)
-
 ## How it works
 
 When you finish a word (space, punctuation, or Enter), the plugin asks macOS what it
@@ -40,20 +38,28 @@ Mirroring the macOS keyboard settings panel, each with its own toggle:
   "J."), after ellipses ("..."), or words with internal capitals ("iPhone").
 - **Add period with double-space** — two spaces after a word become ". ",
   and the next word then gets capitalized naturally.
+- **Smart quotes** — corrected contractions use a curly apostrophe (don’t),
+  matching native macOS autocorrect. On by default; toggle in settings.
 
-## macOS Text Replacements
+## A note on macOS Text Replacements
 
-The plugin reads your actual replacement list from macOS
-(`~/Library/KeyboardServices/TextReplacements.db`, the iCloud-synced store
-behind System Settings → Keyboard → Text Replacements) and expands shortcuts
-when you type a space, punctuation, or Enter after them.
+Unlike autocorrect, your macOS **Text Replacements** (System Settings → Keyboard)
+already work natively inside Obsidian — Obsidian applies them for you. So this
+plugin leaves them alone by default, and its "Use macOS Text Replacements"
+setting is **off**. (Earlier versions had it on, which double-expanded shortcuts
+like "dont" → "don'tt"; 1.3.0 turns it off, once, for everyone.)
 
-- Shortcuts with digits or symbols work ("addr1", ";sig").
-- Typing a shortcut with a leading capital expands with a leading capital.
-- Expansions get capitalized at sentence starts (if that toggle is on).
-- The list auto-reloads when you edit it in System Settings (checked at most
-  every 30s), or immediately via the "Reload macOS Text Replacements" command.
-- Shortcuts containing spaces are not supported.
+The setting is still there for one specific case: the native handling applies
+replacements *everywhere*, including inside code and math. If that bothers you,
+disable Obsidian's own handling (Settings → Editor) and turn this on instead —
+the plugin's version is context-aware and skips code blocks, inline code, math,
+and links. Owning replacements in exactly one layer is the rule; using both
+double-expands them.
+
+When enabled, the plugin reads your replacement list from
+`~/Library/KeyboardServices/TextReplacements.db` (the store behind that Settings
+panel), reloads it automatically when it changes, and supports shortcuts with
+digits or symbols. Shortcuts containing spaces are not supported.
 
 ## Security & privacy disclosures
 
@@ -64,11 +70,11 @@ here is exactly what and why:
   (Apple's own scripting runtime, script embedded in this plugin's source — nothing
   downloaded) to query `NSSpellChecker`, the system autocorrect engine. It runs
   only while the plugin is enabled and is terminated on unload.
-- **File access outside the vault**: it reads (never writes)
+- **File access outside the vault**: *only if you turn on "Use macOS Text
+  Replacements"* (off by default), it reads (never writes)
   `~/Library/KeyboardServices/TextReplacements.db` — the database behind
   System Settings → Keyboard → Text Replacements — using the system `sqlite3`
-  tool, so your replacements work in Obsidian. Disable "Use macOS Text
-  Replacements" in settings to prevent this read entirely.
+  tool. Left off, the plugin never touches it.
 - **No network use.** Nothing leaves your machine; no telemetry of any kind.
   Words you type are sent only to your Mac's own local spellchecker.
 

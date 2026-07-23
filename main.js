@@ -297,12 +297,18 @@ const DEFAULT_SETTINGS = {
   enabled: true, // correct spelling automatically
   capitalize: true, // capitalize words automatically
   doubleSpacePeriod: true, // add period with double-space
-  useTextReplacements: true, // apply macOS Text Replacements
+  // OFF by default: macOS applies Text Replacements natively inside Obsidian, so
+  // the plugin doing it too caused double-expansion (#1). Left available for the
+  // power-user setup: turn Obsidian's native handling off and let the plugin's
+  // context-aware version (skips code/math/links) own replacements instead.
+  useTextReplacements: false,
+  smartQuotes: true, // curly apostrophes/quotes in corrections (don’t, not don't)
   engine: 'auto', // 'auto' | 'native' | 'electron'
   language: '', // '' = system language
   flash: true,
   ignoreWords: '',
   extraAbbreviations: '',
+  _trMigrated: false, // internal: one-time flip of useTextReplacements to off
 };
 
 // characters that end a word and trigger a check.
@@ -319,6 +325,15 @@ const BAD_PREFIX = /[#@/\\.`_~$%&+=<>{[-]/;
 module.exports = class MacAutocorrectPlugin extends Plugin {
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    // One-time migration: earlier versions defaulted "Use macOS Text Replacements"
+    // ON, which double-fired against Obsidian's native handling (#1). Flip it off
+    // once for existing installs. Anyone who deliberately wants the plugin to own
+    // replacements can turn it back on — this won't undo that choice again.
+    if (!this.settings._trMigrated) {
+      this.settings.useTextReplacements = false;
+      this.settings._trMigrated = true;
+      await this.saveData(this.settings);
+    }
     setExtraAbbreviations(this.settings.extraAbbreviations);
     this.native = new NativeChecker();
     this.repl = new Replacements();
@@ -617,6 +632,10 @@ module.exports = class MacAutocorrectPlugin extends Plugin {
     if (/\p{Lu}/u.test(word[0]) && /\p{Ll}/u.test(corr[0])) {
       corr = corr[0].toLocaleUpperCase() + corr.slice(1);
     }
+    // curly apostrophe in contractions/possessives, like native macOS autocorrect
+    // (don’t, not don't). The correction is inserted programmatically, so Obsidian's
+    // own smart-quote substitution never sees it — we apply it here.
+    if (this.settings.smartQuotes) corr = corr.replace(/'/g, '’');
     if (corr === word) return;
 
     let state;
@@ -737,7 +756,7 @@ class AutocorrectSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Use macOS Text Replacements')
-      .setDesc('Apply the shortcuts from System Settings → Keyboard → Text Replacements. The list reloads automatically when it changes; there is also a "Reload macOS Text Replacements" command.')
+      .setDesc('Off by default: macOS already applies your Text Replacements inside Obsidian, so leaving this on double-expands them. Only turn this on if you first disable Obsidian\'s own handling (Settings → Editor) — then the plugin owns replacements and, unlike the native one, skips code, math, and links.')
       .addToggle((t) =>
         t.setValue(this.plugin.settings.useTextReplacements).onChange(async (v) => {
           this.plugin.settings.useTextReplacements = v;
@@ -754,6 +773,16 @@ class AutocorrectSettingTab extends PluginSettingTab {
               new Notice(ok ? `Loaded ${count} text replacement${count === 1 ? '' : 's'}.` : 'Could not read the Text Replacements database.');
             });
           })
+      );
+
+    new Setting(containerEl)
+      .setName('Smart quotes')
+      .setDesc('Use a curly apostrophe in corrected contractions and possessives (don’t, not don\'t), matching native macOS autocorrect.')
+      .addToggle((t) =>
+        t.setValue(this.plugin.settings.smartQuotes).onChange(async (v) => {
+          this.plugin.settings.smartQuotes = v;
+          await this.plugin.saveSettings();
+        })
       );
 
     new Setting(containerEl)
